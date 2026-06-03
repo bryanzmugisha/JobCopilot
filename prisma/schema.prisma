@@ -1,0 +1,83 @@
+// Prisma schema for Job Copilot
+// Docs: https://www.prisma.io/docs
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Where you are in the pipeline for each job
+enum Status {
+  SAVED
+  TAILORED
+  APPLIED
+  INTERVIEW
+  OFFER
+  REJECTED
+  ARCHIVED
+}
+
+enum DocType {
+  SUMMARY
+  COVER_LETTER
+}
+
+// Your single profile — the source of truth the tailoring engine draws from
+model Profile {
+  id        String   @id @default(cuid())
+  fullName  String
+  email     String
+  phone     String
+  location  String
+  github    String?
+  linkedin  String?
+  // A plain-text dump of your CV facts the AI can pull from
+  cvFacts   String   @db.Text
+  // Your default professional summary (AI rewrites a per-job version from this)
+  baseSummary String @db.Text
+  answers   Answer[]
+  updatedAt DateTime @updatedAt
+}
+
+// Reusable answers to common screening questions (your data-entry answer, etc.)
+model Answer {
+  id        String   @id @default(cuid())
+  label     String   // short name, e.g. "Careful data entry"
+  question  String   // the question this answers
+  content   String   @db.Text
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId String
+  createdAt DateTime @default(now())
+}
+
+// A job you're tracking
+model Job {
+  id          String        @id @default(cuid())
+  title       String
+  company     String
+  url         String?
+  location    String?
+  source      String?       // where you found it (LinkedIn, We Work Remotely...)
+  description String        @db.Text
+  status      Status        @default(SAVED)
+  notes       String?       @db.Text
+  appliedAt   DateTime?
+  followUpAt  DateTime?
+  docs        TailoredDoc[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// An AI-tailored summary or cover letter generated for a specific job
+model TailoredDoc {
+  id        String   @id @default(cuid())
+  type      DocType
+  content   String   @db.Text
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId     String
+  createdAt DateTime @default(now())
+}
