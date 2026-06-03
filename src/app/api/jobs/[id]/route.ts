@@ -1,3 +1,6 @@
+// Run at request time, never during the build (these touch the DB).
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
